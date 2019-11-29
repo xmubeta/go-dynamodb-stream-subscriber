@@ -4,9 +4,9 @@ package stream
 
 import (
 	"errors"
-	"time"
-
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -37,6 +37,7 @@ func (r *StreamSubscriber) applyDefaults() {
 	if r.ShardIteratorType == nil {
 		r.ShardIteratorType = aws.String(dynamodbstreams.ShardIteratorTypeLatest)
 	}
+	fmt.Println("Current Type:", *r.ShardIteratorType)
 }
 
 func (r *StreamSubscriber) SetLimit(v int64) {
@@ -97,6 +98,7 @@ func (r *StreamSubscriber) GetStreamDataAsync() (<-chan *dynamodbstreams.Record,
 
 	go func() {
 		tick := time.NewTicker(time.Minute)
+		fmt.Println("New ticker")
 		for {
 			select {
 			case <-tick.C:
@@ -119,6 +121,7 @@ func (r *StreamSubscriber) GetStreamDataAsync() (<-chan *dynamodbstreams.Record,
 					errCh <- err
 					return
 				}
+				fmt.Println("shard id: ", ids)
 				for _, sObj := range ids {
 					lock.Lock()
 					if _, ok := allShards[*sObj.ShardId]; !ok {
@@ -210,6 +213,7 @@ func (r *StreamSubscriber) getLatestStreamArn() (*string, error) {
 	if nil == tableInfo.Table.LatestStreamArn {
 		return nil, errors.New("empty table stream arn")
 	}
+	fmt.Println("Stream arn", *tableInfo.Table.LatestStreamArn)
 	return tableInfo.Table.LatestStreamArn, nil
 }
 
@@ -233,6 +237,7 @@ func (r *StreamSubscriber) processShard(input *dynamodbstreams.GetShardIteratorI
 	nextIterator := iter.ShardIterator
 
 	for nextIterator != nil {
+		fmt.Println("Iterator:", *nextIterator)
 		recs, err := r.streamSvc.GetRecords(&dynamodbstreams.GetRecordsInput{
 			ShardIterator: nextIterator,
 			Limit:         r.Limit,
